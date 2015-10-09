@@ -15,7 +15,7 @@ BeaconsManager.prototype.startScan = function(successCallback, errorCallback, ar
 BeaconsManager.prototype.stopScan = function(successCallback, errorCallback) {
    cordova.exec(successCallback, errorCallback, "BeaconsManager", "stopScan", {});
 };
-
+ 
 module.exports = BeaconsManager;
 
 ;
