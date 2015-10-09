@@ -1,7 +1,4 @@
-
-cordova.define("com.aaw.beacons-manager.BeaconsManager", function(require, exports, module) {
-
-               
+      
 
 function BeaconsManager() {
 };
@@ -92,4 +89,4 @@ module.exports = BeaconsManager;
 //     }
 // };
 
-});
+
