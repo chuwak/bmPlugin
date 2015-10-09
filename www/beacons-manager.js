@@ -18,6 +18,7 @@ BeaconsManager.prototype.stopScan = function(successCallback, errorCallback) {
 
 module.exports = BeaconsManager;
 
+;
 // exports.on = function (event, callback, scope) {
 //     this.core.on(event, callback, scope);
 // };
