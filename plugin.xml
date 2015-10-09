@@ -5,9 +5,9 @@
         id="com.aaw.bmplugin"
         version="0.7.5">
 
-    <name>LocalNotification</name>
+    <name>BeaconsManager</name>
 
-    <description></description>
+    <description>Test Plugin</description>
     <repo></repo>
     <keywords></keywords>
     <license>Apache 2.0</license>
@@ -51,7 +51,7 @@
         <header-file src="src/ios/ExtBeacon.h" />
 
         <header-file src="src/ios/BeaconsManager.h" />
-        <source-file src="src/ios/BeaconsManager.h" />
+        <source-file src="src/ios/BeaconsManager.m" />
 
         <header-file src="src/ios/AppDelegate+CLLocationManager.h" />
         <source-file src="src/ios/AppDelegate+CLLocationManager.h" />
