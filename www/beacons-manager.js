@@ -1,7 +1,5 @@
+      
 
-cordova.define("com.aaw.beacons-manager.BeaconsManager", function(require, exports, module) {
-
-               
 
 function BeaconsManager() {
 };
@@ -11,12 +9,12 @@ if(!window.plugins) {
 if (!window.plugins.BeaconsManager) {
     window.plugins.BeaconsManager = new BeaconsManager();
 }
-BeaconsManager.prototype.startScan = function(array) {
+BeaconsManager.prototype.startScan = function(successCallback, errorCallback, array) {
     cordova.exec(successCallback, errorCallback, "BeaconsManager", "startScan", array);
 };
                
-BeaconsManager.prototype.stopScan = function(array) {
-               cordova.exec(successCallback, errorCallback, "BeaconsManager", "stopScan", {});
+BeaconsManager.prototype.stopScan = function(successCallback, errorCallback) {
+   cordova.exec(successCallback, errorCallback, "BeaconsManager", "stopScan", {});
 };
 
 module.exports = BeaconsManager;
@@ -92,4 +90,4 @@ module.exports = BeaconsManager;
 //     }
 // };
 
-});
+
