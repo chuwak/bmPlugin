@@ -1,6 +1,5 @@
       
 
-
 function BeaconsManager() {
 };
 if(!window.plugins) {
@@ -18,7 +17,6 @@ BeaconsManager.prototype.stopScan = function(successCallback, errorCallback) {
 };
 
 module.exports = BeaconsManager;
-
 
 
 
