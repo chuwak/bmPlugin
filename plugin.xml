@@ -56,6 +56,9 @@
         <header-file src="src/ios/AppDelegate+CLLocationManager.h" />
         <source-file src="src/ios/AppDelegate+CLLocationManager.m" />
 
+        <framework src="CoreBluetooth.framework" />
+        <framework src="CoreLocation.framework" />
+
     </platform>
 
     <!-- android -->
