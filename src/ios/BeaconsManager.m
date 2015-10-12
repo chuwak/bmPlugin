@@ -1,10 +1,5 @@
-//
-//  BeaconsManager.m
-//  iBeaconTemplate
-//
-//  Created by 1 on 11.09.15.
-//  Copyright © 2015 iBeaconModules.us. All rights reserved.
-//
+
+
 #import <Foundation/Foundation.h>
 
 #import "BeaconsManager.h"
@@ -56,8 +51,8 @@ NSArray *staticEBA = nil;
     
     BeaconsManager *bManager = [[BeaconsManager alloc]init];
     AppDelegate *appDelegate = (AppDelegate*)[[UIApplication sharedApplication]delegate];
-    appDelegate.bManager = bManager;
     
+    appDelegate.bManagerAO = bManager;
     
     //[self init];
 }
@@ -96,9 +91,6 @@ NSArray *staticEBA = nil;
 -(void)startScan:(CDVInvokedUrlCommand *)command{
     CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"OK"];
     @try {
-        //NSInteger argsCount = [command.arguments count ];
-        //NSArray* inputBeaconsArr = [command.arguments objectAtIndex:0];
-        
         [self startScanInner:command.arguments];
     }
     @catch (NSException *exception) {
@@ -183,11 +175,12 @@ NSArray *staticEBA = nil;
     }
     
     [BeaconsManager setExtBeaconsArray:incomingArr]; //staticEBA = incomingArr;
-    [appDelegate setGlobalArray:incomingArr];
+    //[appDelegate setGlobalArray:incomingArr];
     
     NSData *data = [NSKeyedArchiver archivedDataWithRootObject:incomingArr];
     [[NSUserDefaults standardUserDefaults] setObject : data forKey:@"incomingArray"];
     [[NSUserDefaults standardUserDefaults]synchronize];
+    
     
     [self.locationManager startUpdatingLocation];
     
@@ -198,27 +191,16 @@ NSArray *staticEBA = nil;
 
 -(void)stopScanInner{
     
-    AppDelegate *appDelegate = (AppDelegate*)[[UIApplication sharedApplication]delegate];
-    BeaconsManager *bm = appDelegate.bManager;
+    //AppDelegate *appDelegate = (AppDelegate*)[[UIApplication sharedApplication]delegate];
+    //BeaconsManager *bm = appDelegate.bManagerAO;
 
-    
-    //self.locationManager = ((BeaconsManager*)[appDelegate bManager ]).locationManager ;
-    
-    
     
     self.locationManager = BeaconsManager.lm ;
     
    
-    
-    
-    
-    //NSArray *extBeaconsArr = ((BeaconsManager*)[appDelegate bManager ]).extBeaconsArray;
-    
     if (self.locationManager != nil)
     {
-        
         NSSet *monitoredRegionsSet = [self.locationManager monitoredRegions];
-        
         NSArray *monitoredRegionsArr = [monitoredRegionsSet allObjects];
         
         for (int i=0; i<[monitoredRegionsArr count]; i++) {
@@ -227,10 +209,8 @@ NSArray *staticEBA = nil;
             [self.locationManager stopRangingBeaconsInRegion: currRegion];
         }
         
-        
         [self.locationManager stopUpdatingLocation];
     }
-
     
 }
 
@@ -305,15 +285,10 @@ NSArray *staticEBA = nil;
     [self.locationManager startUpdatingLocation];
     
     AppDelegate *appDelegate = (AppDelegate*)[[UIApplication sharedApplication]delegate];
-    NSArray *globArr = [appDelegate globalArray];
+
     
     
-    NSLog(@"=== globalArr size is: %d", [globArr count] );
-    
-    
-    
-    
-    NSLog(@"=== staticEBA size is: %d", [[BeaconsManager extBeaconsArray] count] );
+    //NSLog(@"=== staticEBA size is: %d", [[BeaconsManager extBeaconsArray] count] );
     
     
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -345,6 +320,7 @@ NSArray *staticEBA = nil;
  
      NSLog(@"You exited the region.");
      //[BeaconsManager sendLocalNotificationWithMessage:@"Thank you for stopping by Percy! Check back for our next offer!"];
+     [BeaconsManager process:@"exit" : (CLBeaconRegion*)region];
  }
 
 
@@ -372,6 +348,8 @@ NSArray *staticEBA = nil;
     NSData *data = [defaults objectForKey:@"incomingArray"];
     NSArray *incomingArray = [NSKeyedUnarchiver unarchiveObjectWithData:data];
     
+    //AppDelegate *appDelegate = (AppDelegate*)[[UIApplication sharedApplication]delegate];
+    
     ExtBeacon *searchedExtBeacon = [BeaconsManager findBeaconFromArray: incomingArray : beaconRegion];
 
     if(searchedExtBeacon == nil){
@@ -381,17 +359,17 @@ NSArray *staticEBA = nil;
     NSString *msg = searchedExtBeacon.msg;
     int actionType = searchedExtBeacon.actionType;
     NSString *dataStr = searchedExtBeacon.data;
-        
     
-    if([actionLocationType isEqualToString:@"enter"]){
+    NSDictionary *backParams = @{@"data": dataStr, @"actionLocationType": actionLocationType};
+    
     switch (actionType) {
         case 0:
             break;
     
         case 1:
-        [BeaconsManager sendLocalNotificationWithMessage: msg :dataStr : @{@"key1": @"val1", @"key2": @"val2"}];
+            
+        [BeaconsManager sendLocalNotificationWithMessage: msg : dataStr : backParams];
             break;
-    }
 
     }
         
@@ -402,7 +380,7 @@ NSArray *staticEBA = nil;
     UILocalNotification *notification = [[UILocalNotification alloc] init];
     notification.alertBody = message;
     notification.soundName = UILocalNotificationDefaultSoundName;
-    notification.alertAction = actionJson;
+    notification.alertAction = @"More info";
     notification.userInfo = userInfo;
     // [[UIApplication sharedApplication] scheduleLocalNotification:notification];
     [[UIApplication sharedApplication] presentLocalNotificationNow:notification];

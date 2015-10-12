@@ -12,15 +12,15 @@
 @interface ExtBeacon : NSObject{
     int id;
     NSString *uuid;
-    NSInteger actionType;
+    int actionType;
     NSString *msg;
     NSString *data;
     CLBeaconRegion *region;
 }
 
-@property NSInteger id ;
+@property int id ;
 @property NSString *uuid;
-@property NSInteger actionType;
+@property int actionType;
 @property NSString *data;
 @property NSString *msg;
 @property CLBeaconRegion *region;
