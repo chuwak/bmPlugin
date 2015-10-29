@@ -354,6 +354,7 @@ NSArray *staticEBA = nil;
 
     if(searchedExtBeacon == nil){
         NSLog(@"=== Saved beacon not found ===");
+        // todo return;
     }
     
     NSString *msg = searchedExtBeacon.msg;
