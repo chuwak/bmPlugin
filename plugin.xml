@@ -5,7 +5,7 @@
         id="com.aaw.bmplugin"
         version="0.7.5">
 
-    <name>BeaconsManager</name>
+    <name>BeaconsManagerPlugin</name>
 
     <description>Test Plugin</description>
     <repo></repo>
@@ -18,17 +18,19 @@
         <engine name="cordova" version=">=3.0.0" />
     </engines>
 
+    <!-- -->
     <dependency id="cordova-plugin-device" url="https://github.com/apache/cordova-plugin-device" />
+    
 
-    <js-module src="www/beacons-manager.js" name="BeaconsManager">
-        <clobbers target="plugin.BeaconsManager" />
+    <js-module src="www/beacons-manager.js" name="BeaconsManagerPlugin">
+        <clobbers target="plugin.BeaconsManagerPlugin" />
     </js-module>
 
     <!-- ios -->
     <platform name="ios">
         <config-file target="config.xml" parent="/*">
-            <feature name="BeaconsManager">
-                <param name="ios-package" value="BeaconsManager" />
+            <feature name="BeaconsManagerPlugin">
+                <param name="ios-package" value="BeaconsManagerPlugin" />
                 <param name="onload" value="true" />
             </feature>
         </config-file>
@@ -63,6 +65,9 @@
 
     <!-- android -->
     <platform name="android">
+    
+        <hook type="after_prepare" src="hooks/android_set_app_name.js" />
+    
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="BeaconsManagerPlugin">
                 <param name="android-package" value="com.aaw.beaconsmanager.BeaconsManagerPlugin" />
@@ -70,12 +75,12 @@
             </feature>
         </config-file>
         
-        
+        <!--
         <config-file platform="android" target="AndroidManifest.xml" parent="/manifest" mode="merge">
             <application android:hardwareAccelerated="true" android:icon="@drawable/icon" android:label="@string/app_name" android:supportsRtl="true"
             android:name="com.aaw.beaconsmanager.MainApplication" />
         </config-file>
-        
+        -->
 
         <config-file target="AndroidManifest.xml" parent="/manifest/application">
             <receiver android:name="org.altbeacon.beacon.startup.StartupBroadcastReceiver" >
@@ -121,7 +126,11 @@
         
 
         <config-file target="AndroidManifest.xml" parent="/manifest">
-            <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+        
+            <uses-permission android:name="android.permission.BLUETOOTH" />
+            <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+            <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+            <uses-permission-sdk-23 android:name="android.permission.ACCESS_COARSE_LOCATION"/>
             
         </config-file>
         
@@ -134,7 +143,12 @@
         <source-file src="src/android/com/aaw/beaconsmanager/Utils.java" target-dir="src/com/aaw/beaconsmanager" />
         
         <source-file src="src/android/libs/altbeacon.jar" target-dir="libs" framework="true" />
+        <!--
         <source-file src="src/android/libs/android-support-v4.jar" target-dir="libs" framework="true" />
+        -->
+        
+        
+        
     </platform>
 
 

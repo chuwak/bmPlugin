@@ -1,14 +1,11 @@
 package com.aaw.beaconsmanager;
 
 import android.app.Activity;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
-import org.apache.cordova.CordovaInterface;
-import org.apache.cordova.CordovaWebView;
-import org.apache.cordova.PluginResult;
+import org.apache.cordova.*;
 import android.content.Context;
 import android.content.SharedPreferences;
-import org.apache.cordova.CordovaPlugin;
-import org.apache.cordova.CallbackContext;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -17,11 +14,33 @@ import android.util.Log;
 import android.content.Intent;
 import org.json.JSONObject;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 public class BeaconsManagerPlugin extends CordovaPlugin {
     public static final String TAG = "BeaconsManager";
     public Intent beaconConsumer;
+
+
+
+
+    @Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        Log.w(TAG, "=======onNewIntent====" );
+        try {
+            Bundle b = intent.getExtras();
+            if(b!=null) {
+                Log.w(TAG, "=======saved extras====" + b.size() + "========" + b.toString());
+                sendNotifyToJavascript(b);
+            }
+
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
+
+
 
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
@@ -29,7 +48,34 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
         AltMonitoring.applicationContext = this.cordova.getActivity();//.getApplicationContext();
         beaconConsumer = new Intent(this.cordova.getActivity()/*.getApplicationContext()*/, AltMonitoring.class);
         //beaconConsumer = new AltMonitoring();
+
+
+
+
+        //==================
+        try {
+//            Intent launchIntent = this.cordova.getActivity().getPackageManager().getLaunchIntentForPackage("com.appplg2.MainActivity");
+//            MainApplication.getContext().getPackageManager().getLaunchIntentForPackage("com.appplg2.MainActivity");
+
+//            Intent launchIntent = this.cordova.getActivity().getPackageManager().getLaunchIntentForPackage(MainApplication.getContext().getPackageName());
+            Bundle cordovaIntentBundle = this.cordova.getActivity().getIntent().getExtras();
+            if(cordovaIntentBundle!=null){
+                Log.w(TAG, "=======cordovaIntentBundle:" + cordovaIntentBundle.size());
+                sendNotifyToJavascript(cordovaIntentBundle);
+            }
+
+
+
+//            Bundle b = launchIntent.getExtras();
+//            if(b!=null) {
+//                Log.w(TAG, "=======initialize plugin extras====" + b.size() + "========" + b.toString());
+//            }
+        }catch (Exception e){
+            Log.e(TAG, e.getMessage());
+        }
+
     }
+
 
     @Override
     public boolean execute(String action, JSONArray data, CallbackContext callbackContext) throws JSONException {
@@ -38,6 +84,7 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
         if (action.equals("startScan")) {
             try {
                 JSONArray beaconUUIDs = data.getJSONArray(0);
+
                 this.startMonitoring(beaconUUIDs, callbackContext);
                 return true;
             } catch (JSONException e) {
@@ -59,6 +106,15 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
 
         if (action.equals("getBeacons")) {
             this.getBeacons(callbackContext);
+            return true;
+        }
+
+        if(action.equals("readLaunchData")){
+            this.readLaunchData();
+        }
+
+        if (action.equals("onDeviceReady")) {
+            onDeviceReady();
             return true;
         }
 
@@ -191,38 +247,82 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
 //    }
 
 
+    public void readLaunchData(){
+       //IntegetContext().getPackageManager().getLaunchIntentForPackage(MainApplication.getContext().getPackageName());
+        this.cordova.getActivity().getIntent().getExtras();
+
+    }
+
+
 
     public Context getContext(){
         return this.cordova.getActivity().getApplicationContext();
     }
 
 
-    public static final String DATA = "DATA";
-    public static final String ACTION = "ACTION";
-    public static final String ACTION_FILTER = "com.tenforwardconsulting.cordova.bgloc.ACTION";
-    public static final String LOCATION_UPDATE_FILTER = "com.tenforwardconsulting.cordova.bgloc.LOCATION_UPDATE";
-    public static final int ACTION_LOCATION_UPDATE = 0;
-    public static final int ACTION_STOP_RECORDING = 1;
-    public static final int ACTION_START_RECORDING = 2;
-    public static final int ACTION_ACTIVITY_KILLED = 3;
-
     public void onDestroy() {
         Log.d(TAG, "Main Activity destroyed!!!");
         Activity activity = this.cordova.getActivity();
 
-//        if (isEnabled) {
-//            if (config.getStopOnTerminate()) {
-//                activity.stopService(updateServiceIntent);
-//            } else {
-                //todo: send info to location service
-//                Intent intent = new Intent(/*Constant.ACTION_FILTER*/ "com.aaw.beaconsmanager.AltMonitoring.ACTION");
-//                intent.putExtra(ACTION, ACTION_ACTIVITY_KILLED);
-//                intent.putExtra(DATA, true);
-//                activity.sendBroadcast(intent);
-//            }
-//        }
+    }
 
-        //this.cordova.getActivity().startService(beaconConsumer);
+
+
+
+    /*=================================     sending event   ===============================*/
+    static boolean deviceready = false;
+    ArrayList<String> eventQueue = new ArrayList();
+
+    private  synchronized void sendJavascript(final String js) {
+        Log.w(TAG, "====== sendJavascript Called ======="+js);
+
+        if (!deviceready) {
+            Log.w(TAG, "====== device not ready  ====== add to queue next:"+js);
+            eventQueue.add(js);
+            return;
+        }
+        Runnable jsLoader = new Runnable() {
+            public void run() {
+                webView.loadUrl("javascript:" + js);
+            }
+        };
+        try {
+            Method post = webView.getClass().getMethod("post",Runnable.class);
+            post.invoke(webView,jsLoader);
+        } catch(Exception e) {
+
+            ((Activity)(webView.getContext())).runOnUiThread(jsLoader);
+        }
+    }
+
+    private synchronized void onDeviceReady() {
+        Log.w(TAG, "=============onDeviceReady=======eventQueue.size: "+eventQueue.size());
+        //isInBackground = false;
+        deviceready = true;
+
+        for (String js : eventQueue) {
+            sendJavascript(js);
+        }
+
+        eventQueue.clear();
+    }
+
+
+    public void sendNotifyToJavascript(Bundle b){
+        Log.w(TAG, "=============sendNotifyToJavascript=======Bundle b.size: "+b.size());
+        Object beaconData = "";
+        Object actionLocationType ="";
+        for(String key: b.keySet()){
+            if(key.equals("data")){
+                beaconData = b.get(key);
+            }
+            if(key.equals("actionLocationType")){
+                actionLocationType = b.get(key);
+            }
+
+        }
+        String jsStr = "if(handleIncomingNotification){handleIncomingNotification('"+actionLocationType+"', "+beaconData+")}";
+        sendJavascript(jsStr);
     }
 
 }
