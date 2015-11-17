@@ -146,6 +146,7 @@
         <!--
         <source-file src="src/android/libs/android-support-v4.jar" target-dir="libs" framework="true" />
         -->
+		<framework src="com.android.support:support-v4:+" />
         
         
         
