@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -21,6 +22,11 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import org.altbeacon.beacon.*;
+import org.altbeacon.beacon.service.BeaconService;
+//import org.altbeacon.beacon.service.DetectionTracker;
+import org.altbeacon.beacon.service.RangedBeacon;
+//import org.altbeacon.beacon.service.scanner.CycledLeScanCallback;
+//import org.altbeacon.beacon.service.scanner.CycledLeScanner;
 import org.altbeacon.beacon.simulator.BeaconSimulator;
 import org.altbeacon.beacon.startup.BootstrapNotifier;
 import org.altbeacon.beacon.startup.RegionBootstrap;
@@ -59,7 +65,9 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
         try {
             altBeaconManager =  BeaconManager.getInstanceForApplication( this );
             altBeaconManager.setBackgroundMode(true);
-            altBeaconManager.setRegionExitPeriod(8*1000L);
+            //altBeaconManager.setRegionExitPeriod(8*1000L);  todo new
+            altBeaconManager.setBackgroundScanPeriod(400L);
+            altBeaconManager.setForegroundBetweenScanPeriod(300L);
 
         }catch (Exception e){
             Log.e(TAG, e.getMessage());
@@ -158,6 +166,29 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
 
     @Override
     public void onBeaconServiceConnect() {
+
+        //DetectionTracker dt = DetectionTracker.getInstance()//;
+        //todo new
+//        CycledLeScanCallback scanCallback = new CycledLeScanCallback(){
+//
+//            @Override
+//            public void onLeScan(BluetoothDevice bluetoothDevice, int i, byte[] bytes) {
+//                Log.i(TAG, bytes.toString());
+//            }
+//
+//            @Override
+//            public void onCycleEnd() {
+//                Log.i(TAG, "onCycleEnd");
+//            }
+//        };
+//
+//        CycledLeScanner mCycledScanner = CycledLeScanner.createScanner(this, BeaconManager.DEFAULT_FOREGROUND_SCAN_PERIOD,
+//                BeaconManager.DEFAULT_FOREGROUND_BETWEEN_SCAN_PERIOD, false, scanCallback, null);
+//        mCycledScanner.start();
+
+        RangedBeacon.setSampleExpirationMilliseconds(300);
+
+
         Log.w(TAG, "=== onBeaconServiceConnect : BeaconConsumer ===");
         altBeaconManager.setMonitorNotifier(new MonitorNotifier() {
             @Override
@@ -204,6 +235,7 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
 
         try {
             altBeaconManager.startRangingBeaconsInRegion(allBeaconsRegion);
+            //BeaconManager.setUseTrackingCache(true);
         } catch (RemoteException e) {
             e.printStackTrace();
         }
@@ -219,6 +251,7 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
     //@Override
     public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
         for (Beacon beacon: beacons) {
+
             Log.w(TAG, "===  didRangeBeaconsInRegion ===size:"+beacons.size());
             //showNotification( "===  didRangeBeaconsInRegion ===size: "+beacons.size(), new HashMap<String, String>());
 
@@ -231,18 +264,18 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
                         " approximately "+beacon.getDistance()+" meters away.");
 
                 // Do we have telemetry data?
-                if (beacon.getExtraDataFields().size() > 0) {
-                    long telemetryVersion = beacon.getExtraDataFields().get(0);
-                    long batteryMilliVolts = beacon.getExtraDataFields().get(1);
-                    long pduCount = beacon.getExtraDataFields().get(3);
-                    long uptime = beacon.getExtraDataFields().get(4);
-
-                    Log.d(TAG, "The above beacon is sending telemetry version "+telemetryVersion+
-                            ", has been up for : "+uptime+" seconds"+
-                            ", has a battery level of "+batteryMilliVolts+" mV"+
-                            ", and has transmitted "+pduCount+" advertisements.");
-
-                }
+//                if (beacon.getExtraDataFields().size() > 0) {
+//                    long telemetryVersion = beacon.getExtraDataFields().get(0);
+//                    long batteryMilliVolts = beacon.getExtraDataFields().get(1);
+//                    long pduCount = beacon.getExtraDataFields().get(3);
+//                    long uptime = beacon.getExtraDataFields().get(4);
+//
+//                    Log.d(TAG, "The above beacon is sending telemetry version "+telemetryVersion+
+//                            ", has been up for : "+uptime+" seconds"+
+//                            ", has a battery level of "+batteryMilliVolts+" mV"+
+//                            ", and has transmitted "+pduCount+" advertisements.");
+//
+//                }
 
 
         }
