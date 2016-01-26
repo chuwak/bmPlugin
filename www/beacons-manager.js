@@ -1,4 +1,4 @@
-cordova.define("com.aaw.beaconsmanager.BeaconsManagerPlugin", function(require, exports, module) {
+
 
     var exec    = require('cordova/exec'),
     channel = require('cordova/channel');
@@ -80,4 +80,4 @@ cordova.define("com.aaw.beaconsmanager.BeaconsManagerPlugin", function(require, 
     module.exports = BeaconsManager;
 
 
-});
+
