@@ -1,4 +1,5 @@
-    
+cordova.define("com.aaw.beaconsmanager.BeaconsManagerPlugin", function(require, exports, module) {
+
     var exec    = require('cordova/exec'),
     channel = require('cordova/channel');
 
@@ -10,19 +11,59 @@
     if (!window.plugins.BeaconsManager) {
         window.plugins.BeaconsManager = new BeaconsManager();
     }
-    BeaconsManager.prototype.startScan = function (successCallback, errorCallback, array) {
-        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "startScan", [array]);
+
+
+    //=================   SERVICE  ===================
+
+    BeaconsManager.prototype.startService = function (successCallback, errorCallback) {
+        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "startService", []);
     };
 
-    BeaconsManager.prototype.stopScan = function (successCallback, errorCallback) {
-        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "stopScan", []);
+    BeaconsManager.prototype.stopService = function (successCallback, errorCallback) {
+        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "stopService", []);
     };
 
-    BeaconsManager.prototype.deviceready = function (successCallback, errorCallback) {
-        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "deviceready", []);
+
+    //=================   MONITORING  ===================
+
+
+    BeaconsManager.prototype.startMonitoring = function (successCallback, errorCallback, array) {
+        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "startMonitoring", [array]);
     };
 
-    module.exports = BeaconsManager;
+    BeaconsManager.prototype.stopMonitoring = function (successCallback, errorCallback) {
+        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "stopMonitoring", []);
+    };
+
+    //===================   RANGING   ====================
+
+    BeaconsManager.prototype.startRanging = function (successCallback, errorCallback, array) {
+        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "startRanging", [array]);
+    };
+
+    BeaconsManager.prototype.stopRanging = function (successCallback, errorCallback) {
+        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "stopRanging", []);
+    };
+
+
+    //=====
+    BeaconsManager.prototype.applyParameters = function (successCallback, errorCallback, params) {
+        cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "applyParameters", [params]);
+    };
+
+    var monitoringAsyncFunc;
+
+    monitoringAsyncFunc = function (result){
+        console.log('result: '+result );
+    }
+
+    BeaconsManager.prototype.setMonitoringFunction = function(func){
+        monitoringAsyncFunc = func;
+        cordova.exec(
+            function(res){},
+            function(e){alert('error sent onDeviceReady: '+e);},
+            'BeaconsManagerPlugin', 'monitoringFunctionSet', []);
+    }
 
 
 
@@ -30,7 +71,13 @@
         // Device is ready now, the listeners are registered
         // and all queued events can be executed.
         cordova.exec(
-            function(res){console.log('onDeviceReady successful sent')},
+            monitoringAsyncFunc,
             function(e){alert('error sent onDeviceReady: '+e);},
             'BeaconsManagerPlugin', 'onDeviceReady', []);
     });
+
+
+    module.exports = BeaconsManager;
+
+
+});

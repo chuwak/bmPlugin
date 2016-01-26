@@ -1,60 +1,73 @@
 package com.aaw.beaconsmanager;
 
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
-import android.app.Service;
-import android.bluetooth.BluetoothDevice;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
-import android.content.SharedPreferences;
+import android.app.*;
+import android.bluetooth.BluetoothAdapter;
+import android.content.*;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.graphics.drawable.Drawable;
-import android.net.Uri;
+import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import org.altbeacon.beacon.*;
-import org.altbeacon.beacon.service.BeaconService;
-//import org.altbeacon.beacon.service.DetectionTracker;
-import org.altbeacon.beacon.service.RangedBeacon;
-//import org.altbeacon.beacon.service.scanner.CycledLeScanCallback;
-//import org.altbeacon.beacon.service.scanner.CycledLeScanner;
 import org.altbeacon.beacon.simulator.BeaconSimulator;
-import org.altbeacon.beacon.startup.BootstrapNotifier;
 import org.altbeacon.beacon.startup.RegionBootstrap;
-import org.apache.cordova.CordovaInterface;
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.PluginResult;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.*;
 import java.util.*;
 
 
-public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNotifier {
+public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNotifier*/ {
     protected static final String TAG = "AltMonitoring";
 
 
     public static final String PREFS_NAME = "BeaconsStore";
 
-    private static ArrayList<Beacon> visibleBeacons = new ArrayList();
+    //private static ArrayList<Beacon> visibleBeacons = new ArrayList();
 
-    public static Context applicationContext;
+    //public static Context applicationContext;
 
-    private BeaconManager altBeaconManager;
+    public static BeaconManager altBeaconManager;
 
     private RegionBootstrap mRegionBootstrap;
 
-    private SharedPreferences sharedPreferences;
+    private static SharedPreferences sharedPreferences;
 
     private ArrayList<ExtBeacon> extBeaconsList;
 
+    public static CallbackContext monitoringCallbackContext;
+
+    public static boolean runInForeground = false;
+
+    private BroadcastReceiver broadcastReceiver;
+
+
+
+    public static BeaconManager getAltBeaconManagerInstance(){
+        return BeaconManager.getInstanceForApplication( MainApplication.getContext() /*this*/  );
+    }
+
+
+    public static void setBackgroundMode(boolean mode){
+        getAltBeaconManagerInstance().setBackgroundMode(mode);
+        runInForeground = !mode;
+    }
+
+
+
+    private final IBinder altBinder = new LocalBinder();
+    public class LocalBinder extends Binder {
+        AltMonitoring getService() {
+            return AltMonitoring.this;
+        }
+    }
 
 
     @Override
@@ -63,20 +76,37 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
         Log.w(TAG, "=== AltBeacon : onCreate ===");
 
         try {
-            altBeaconManager =  BeaconManager.getInstanceForApplication( this );
-            altBeaconManager.setBackgroundMode(true);
-            //altBeaconManager.setRegionExitPeriod(8*1000L);  todo new
+            altBeaconManager =  BeaconManager.getInstanceForApplication( MainApplication.getContext() /*this*/  );
+            altBeaconManager.setRegionExitPeriod(8*1000L); // todo new
+            if(!runInForeground){
+                //altBeaconManager.setBackgroundMode(true);
+            }
             altBeaconManager.setBackgroundScanPeriod(400L);
-            altBeaconManager.setForegroundBetweenScanPeriod(300L);
+            altBeaconManager.setBackgroundBetweenScanPeriod(2000L);
+
+            altBeaconManager.setForegroundBetweenScanPeriod(0L);
+            altBeaconManager.setForegroundScanPeriod(333L);
+
 
         }catch (Exception e){
             Log.e(TAG, e.getMessage());
         }
 
+        initBroadcastReceiver();
+
+    }
+
+    @Override
+    public void onDestroy() {
+        __stop();
+
     }
 
 
-    public void start(){
+    //===================  private start-stop ====================
+
+
+    private void __start(){
         Log.w(TAG, "=== start ===");
 
         // all alt beacons parser already parsed
@@ -112,17 +142,35 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
         altBeaconManager.bind(this);
 
 
+
+
+
     }
 
-    public void stop(){
-        altBeaconManager.unbind(this);
+    private void __stop(){
+        if(altBeaconManager != null){
+
+            //altBeaconManager.setRangeNotifier(null);
+            altBeaconManager.unbind(this);
+            //altBeaconManager = null;
+
+        }
+
+        if(broadcastReceiver!=null){
+            this.getApplicationContext().unregisterReceiver(broadcastReceiver);
+        }
+        Log.w(TAG, "=== Destroy iBeacon service ===");
     }
+
+
+
+
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.w(TAG, "=== onStartCommand ===");
 
-        start();
+        __start();
         return  START_STICKY;
     }
 
@@ -135,10 +183,11 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
 
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return altBinder;
     }
 
 
+    //===== bind-unbind
 
     @Override
     public boolean bindService(Intent intent, ServiceConnection connection, int mode) {
@@ -153,56 +202,28 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
     }
 
 
-    @Override
-    public void onDestroy() {
-        if(altBeaconManager != null){
 
-            altBeaconManager.unbind(this);
-            altBeaconManager = null;
-        }
-        Log.w(TAG, "=== Destroy iBeacon service ===");
-    }
-
+    private boolean beaconServiceConnected = false;
 
     @Override
     public void onBeaconServiceConnect() {
 
-        //DetectionTracker dt = DetectionTracker.getInstance()//;
-        //todo new
-//        CycledLeScanCallback scanCallback = new CycledLeScanCallback(){
-//
-//            @Override
-//            public void onLeScan(BluetoothDevice bluetoothDevice, int i, byte[] bytes) {
-//                Log.i(TAG, bytes.toString());
-//            }
-//
-//            @Override
-//            public void onCycleEnd() {
-//                Log.i(TAG, "onCycleEnd");
-//            }
-//        };
-//
-//        CycledLeScanner mCycledScanner = CycledLeScanner.createScanner(this, BeaconManager.DEFAULT_FOREGROUND_SCAN_PERIOD,
-//                BeaconManager.DEFAULT_FOREGROUND_BETWEEN_SCAN_PERIOD, false, scanCallback, null);
-//        mCycledScanner.start();
-
-        RangedBeacon.setSampleExpirationMilliseconds(300);
-
+        beaconServiceConnected = true;
 
         Log.w(TAG, "=== onBeaconServiceConnect : BeaconConsumer ===");
         altBeaconManager.setMonitorNotifier(new MonitorNotifier() {
             @Override
             public void didEnterRegion(Region region) {
-                process("enter", region);
-                Log.w(TAG, "I just saw an beacon for the first time!");
+                monitoringStateProcess("enter", region);
+                //Log.w(TAG, "I just saw an beacon for the first time!");
                 //showNotification("entered allBeaconsRegion.  starting ranging");
 
             }
 
             @Override
             public void didExitRegion(Region region) {
-                process("exit", region);
-                Log.w(TAG, "I no longer see an beacon");
+                monitoringStateProcess("exit", region);
+                //Log.w(TAG, "I no longer see an beacon");
             }
 
             @Override
@@ -211,87 +232,130 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
             }
         });
 
-        try {
 
-            extBeaconsList = this.loadBeacons();
-//            for(ExtBeacon eb: extBeaconsList){
-//                altBeaconManager.startMonitoringBeaconsInRegion(eb.getRegion());
-//
-//            }
-            // for monitoring all regions
-            for(ExtBeacon eb: extBeaconsList){
-                altBeaconManager.startMonitoringBeaconsInRegion(eb.getRegion());
+        // start monitoring
 
+        if(!runInForeground  || needMonitorEnable) {
+            Log.w(TAG, "Service running in Background");
+            try {
+                startMonitoring();
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.e(TAG, e.getMessage());
             }
-           // altBeaconManager.startMonitoringBeaconsInRegion(new Region("all-beacons-allBeaconsRegion", null, null, null));
-        } catch (RemoteException e) {
+        }
+
+
+        try {
+            tryToStartMonitoring();
+        }catch (Exception e){
             Log.e(TAG, e.getMessage());
         }
 
 
-        // === from site
-        Region allBeaconsRegion = new Region("all-beacons-region", null, null, null);
+        // starting ranging
 
+        tryToStartRanging();
+
+
+
+    }
+
+
+    private boolean needMonitorEnable = false;
+
+    public void startMonitoring() throws Exception{
+        needMonitorEnable = true;
+        extBeaconsList = loadBeacons();
+
+        tryToStartMonitoring();
+
+    }
+
+
+    private void tryToStartMonitoring() throws Exception{
+        if(beaconServiceConnected && needMonitorEnable){
+            try {
+                for(ExtBeacon eb: extBeaconsList){
+                    if(!altBeaconManager.getMonitoredRegions().contains(eb.getRegion())) {
+                        altBeaconManager.startMonitoringBeaconsInRegion(eb.getRegion());
+                    }
+                }
+                // altBeaconManager.startMonitoringBeaconsInRegion(new Region("all-beacons-allBeaconsRegion", null, null, null));
+            } catch (RemoteException e) {
+                e.printStackTrace();
+                Log.e(TAG, e.getMessage());
+                throw e;
+            }
+        }
+    }
+
+
+    public static void stopMonitoring() throws Exception{
 
         try {
-            altBeaconManager.startRangingBeaconsInRegion(allBeaconsRegion);
-            //BeaconManager.setUseTrackingCache(true);
+            Collection<Region> allMonitoredRegions = altBeaconManager.getMonitoredRegions();
+            for(Region r: allMonitoredRegions){
+                altBeaconManager.stopMonitoringBeaconsInRegion(r);
+            }
         } catch (RemoteException e) {
-            e.printStackTrace();
-        }
-        altBeaconManager.setRangeNotifier(this);
-
-
-    }
-
-
-
-
-
-    //@Override
-    public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
-        for (Beacon beacon: beacons) {
-
-            Log.w(TAG, "===  didRangeBeaconsInRegion ===size:"+beacons.size());
-            //showNotification( "===  didRangeBeaconsInRegion ===size: "+beacons.size(), new HashMap<String, String>());
-
-            //if (beacon.getServiceUuid() == 0xfeaa && beacon.getBeaconTypeCode() == 0x00) {
-                // This is a Eddystone-UID frame
-                Identifier namespaceId = beacon.getId1();
-                Identifier instanceId = beacon.getId2();
-                Log.d(TAG, "I see a beacon transmitting namespace id: "+namespaceId+
-                        " and instance id: "+instanceId+
-                        " approximately "+beacon.getDistance()+" meters away.");
-
-                // Do we have telemetry data?
-//                if (beacon.getExtraDataFields().size() > 0) {
-//                    long telemetryVersion = beacon.getExtraDataFields().get(0);
-//                    long batteryMilliVolts = beacon.getExtraDataFields().get(1);
-//                    long pduCount = beacon.getExtraDataFields().get(3);
-//                    long uptime = beacon.getExtraDataFields().get(4);
-//
-//                    Log.d(TAG, "The above beacon is sending telemetry version "+telemetryVersion+
-//                            ", has been up for : "+uptime+" seconds"+
-//                            ", has a battery level of "+batteryMilliVolts+" mV"+
-//                            ", and has transmitted "+pduCount+" advertisements.");
-//
-//                }
-
+            Log.e(TAG, e.getMessage());
+            throw e;
 
         }
-        visibleBeacons =  new ArrayList<Beacon>(beacons);
-    }
-
-
-    public static ArrayList<Beacon> getBeacons(){
-        // todo fill
-        return visibleBeacons;
     }
 
 
 
 
-    public void process(String actionLocationType, Region region){
+    //============================ RANGING =====================
+
+    private boolean needToStartRanging = false;
+    private RangeNotifier rangeNotifier;
+    public void startRanging(CallbackContext callbackContext, RangeNotifier rangeNotifier){
+        needToStartRanging = true;
+        this.rangeNotifier = rangeNotifier;
+        tryToStartRanging();
+    }
+
+    private void tryToStartRanging(){
+        if(needToStartRanging && beaconServiceConnected){
+            //if(runInForeground) {
+            // === from site
+            Region allBeaconsRegion = new Region("all-beacons-region", null, null, null);
+
+
+            try {
+
+                altBeaconManager.startRangingBeaconsInRegion(allBeaconsRegion);
+            } catch (RemoteException e) {
+                Log.e(TAG, e.getMessage());
+            }
+            altBeaconManager.setRangeNotifier( rangeNotifier );
+            //}
+        }
+    }
+
+    public static void stopRanging()throws Exception{
+        try {
+            Collection<Region> allRangedRegions = altBeaconManager.getRangedRegions();
+            for(Region r: allRangedRegions){
+                altBeaconManager.stopRangingBeaconsInRegion(r);
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG, e.getMessage());
+            throw e;
+        }
+
+    }
+
+
+
+
+    /**
+     * if  monitoring callback is connected, then not show
+     */
+    public void monitoringStateProcess(String actionLocationType, Region region){
 
         ExtBeacon eb = findBeaconInArray(extBeaconsList, region);
         if(eb==null){
@@ -299,15 +363,40 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
             return;
         }
 
-        Map<String, String> backParams = new HashMap();
-        backParams.put("data", eb.getData());
-        backParams.put("actionLocationType", actionLocationType);
+        HashMap<String, Object> returnMap = new HashMap();
+        returnMap.put("actionLocationType", actionLocationType);
+        returnMap.put("parametersMap", eb.getData());
+        returnMap.put("region", new BeaconsUtils.ExtRegion(region));
+
+        if(monitoringCallbackContext!=null) {
+
+
+
+
+            JSONObject jso = BeaconsUtils.bundleToJsonObject(returnMap);
+
+            PluginResult result;
+            result = new PluginResult(PluginResult.Status.OK, jso);
+            result.setKeepCallback(true);
+            monitoringCallbackContext.sendPluginResult(result);
+
+            return;
+        }
+
+
+
+
+//        Map<String, Object> backParams = new HashMap();
+//        backParams.put("data", eb.getData());
+//        backParams.put("actionLocationType", actionLocationType);
+//        backParams.put("region", eb.getRegion());
+//        returnMap.put("parametersMap", eb.getData());
 
 
 
         switch (eb.getActionType()){
             case 0: break;
-            case 1: showNotification(eb.getMsg(), backParams);
+            case 1: showNotification(eb.getMsg(), returnMap);
         }
 
 
@@ -328,7 +417,7 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
 
     private NotificationManager mManager;
 
-    public void showNotification(String notificationStr, Map<String, String> backParam) {
+    private void showNotification(String notificationStr, HashMap<String, Object> backParam) {
         Log.w(TAG, notificationStr);
 
 
@@ -341,12 +430,15 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
         try {
             cl = Class.forName(launchClassName);
         } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+            Log.e(TAG, e.getMessage());
             return;
         }
         Intent runAppWithParamsIntent = new Intent(this.getApplicationContext(), cl);
+        runAppWithParamsIntent.putExtra("backParams", BeaconsUtils.objectToString(backParam));
         for(String key: backParam.keySet()){
-            runAppWithParamsIntent.putExtra(key, backParam.get(key));
+            //runAppWithParamsIntent.putExtra(key, backParam.get(key));
+
+
         }
         //runAppWithParamsIntent.putExtra("bmPlugin", "Exist Always");
         //runAppWithParamsIntent.putExtra("backParam", (Serializable) backParam);
@@ -365,7 +457,6 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
 
     public int getAppIcon(){
         PackageManager pm = getPackageManager();
-
         String pkg = MainApplication.getContext().getPackageName();
         try {
             ApplicationInfo ai = pm.getApplicationInfo(pkg, 0);
@@ -382,14 +473,14 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
 
     private ArrayList<ExtBeacon> loadBeacons(){
         ArrayList<ExtBeacon> extBeaconsList = null;
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String beaconsArrString = sharedPreferences.getString("extBeaconsListStr" , "");
+//        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(/*AltMonitoring.applicationContext*/ MainApplication.getContext());
+        String beaconsArrString = BeaconsUtils.readStringVariableFromAppContext("extBeaconsListStr"); //sharedPreferences.getString("extBeaconsListStr" , "");
 
-        extBeaconsList = (ArrayList<ExtBeacon>) Utils.stringToObject(beaconsArrString);
+        extBeaconsList = (ArrayList<ExtBeacon>) BeaconsUtils.stringToObject(beaconsArrString);
 
         for(ExtBeacon eb: extBeaconsList){
             Region currExtBeaconRegion = new Region("region-"+eb.getId(), Identifier.parse(eb.getUuid()), null, null);
-            altBeaconManager.getRangedRegions().add(currExtBeaconRegion);
+            altBeaconManager.getMonitoredRegions().add(currExtBeaconRegion);
             eb.setRegion(currExtBeaconRegion);
         }
         return extBeaconsList;
@@ -412,6 +503,119 @@ public class AltMonitoring  extends Service implements  BeaconConsumer, RangeNot
         return Build.FINGERPRINT.startsWith("generic");
 //        return "google_sdk".equals( Build.PRODUCT );
     }
+
+
+
+
+
+    //=======================  bluetooth  ===================
+
+//    private boolean checkBluetooth()throws Exception{
+//        //check device support
+//        try {
+//            boolean available = altBeaconManager.checkAvailability();
+//            return
+//        } catch (Exception e) {
+//            throw e;
+//            //if device does not support iBeacons an error is thrown
+//            //Log.w("Cannot listen to Bluetooth service: "+e.getMessage());
+//
+//        }
+//        return false
+//    }
+
+
+    private void initBroadcastReceiver(){
+        if (broadcastReceiver != null) {
+            return;
+        }
+        // Register for broadcasts on BluetoothAdapter state change
+        IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+
+
+
+        broadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final String action = intent.getAction();
+
+                // Only listen for Bluetooth server changes
+                if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
+
+                    final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE,BluetoothAdapter.ERROR);
+                    final int oldState = intent.getIntExtra(BluetoothAdapter.EXTRA_PREVIOUS_STATE,BluetoothAdapter.ERROR);
+
+                    Log.w(TAG, "Bluetooth Service state changed from "+getStateDescription(oldState)+" to " + getStateDescription(state));
+                    if(state==BluetoothAdapter.STATE_TURNING_OFF || state==BluetoothAdapter.STATE_TURNING_ON){
+                        // no need duplicate liked events
+                        return;
+                    }
+                    notifyAboutChangedBluetoothStatus(getStateDescription(oldState), getStateDescription(state));
+
+
+                }
+            }
+
+            private String getStateDescription(int state) {
+                switch (state) {
+                    case BluetoothAdapter.ERROR:
+                        return "ERROR";
+                    case BluetoothAdapter.STATE_OFF:
+                        return "STATE_OFF";
+                    case BluetoothAdapter.STATE_TURNING_OFF:
+                        return "STATE_TURNING_OFF";
+                    case BluetoothAdapter.STATE_ON:
+                        return "STATE_ON";
+                    case BluetoothAdapter.STATE_TURNING_ON:
+                        return "STATE_TURNING_ON";
+                }
+                return "ERROR"+state;
+            }
+        };
+
+        this.getApplicationContext().registerReceiver(broadcastReceiver, filter);
+
+    }
+
+
+    private void notifyAboutChangedBluetoothStatus(String oldStatus, String newStatus){
+        if(monitoringCallbackContext!=null){
+
+            JSONObject resJso = new JSONObject();
+            try {
+                resJso.put("eventType", "didChangeBluetoothStatus");
+                JSONObject data = new JSONObject();
+                data.put("oldStatus", oldStatus);
+                data.put("newStatus", newStatus);
+                resJso.put("data", data);
+            }catch (JSONException je){
+                Log.e(TAG, je.getMessage());
+            }
+
+            PluginResult pluginResult;
+
+            pluginResult = new PluginResult(PluginResult.Status.OK, resJso);
+            pluginResult.setKeepCallback(true);
+            monitoringCallbackContext.sendPluginResult(pluginResult);
+        }else{
+            //Log.i(TAG, msg);
+        }
+    }
+
+
+    private void sendResultToApplication(String msg){
+        if(monitoringCallbackContext!=null){
+            PluginResult pluginResult;
+            pluginResult = new PluginResult(PluginResult.Status.OK, msg);
+            pluginResult.setKeepCallback(true);
+            monitoringCallbackContext.sendPluginResult(pluginResult);
+        }else{
+            Log.i(TAG, msg);
+        }
+    }
+
+
+
 
 
 }

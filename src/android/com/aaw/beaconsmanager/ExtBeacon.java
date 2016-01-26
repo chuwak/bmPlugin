@@ -11,6 +11,8 @@ public class ExtBeacon implements Serializable {
 
     private int id;
     private String uuid;
+    private String major;
+    private String minor;
     private int actionType;
     private String msg;
     private String data;
@@ -38,6 +40,22 @@ public class ExtBeacon implements Serializable {
 
     public void setUuid(String uuid) {
         this.uuid = uuid;
+    }
+
+    public String getMajor() {
+        return major;
+    }
+
+    public void setMajor(String major) {
+        this.major = major;
+    }
+
+    public String getMinor() {
+        return minor;
+    }
+
+    public void setMinor(String minor) {
+        this.minor = minor;
     }
 
     public int getActionType() {
