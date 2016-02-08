@@ -1,6 +1,6 @@
 {
   "name": "bmcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "beta beacons cordova plugin - temp for old altbeacon library",
   "main": "index.js",
   "scripts": {
