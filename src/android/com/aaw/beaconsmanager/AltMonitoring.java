@@ -481,7 +481,7 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
         for(ExtBeacon eb: extBeaconsList){
             String major = eb.getMajor();
             Identifier majorId = (major==null  ||  major.equals("")  ||  major.equals("null")) ? null : Identifier.parse(major);
-            String minor = eb.getMajor();
+            String minor = eb.getMinor();
             Identifier minorId = (minor==null  ||  minor.equals("")  ||  minor.equals("null")) ? null : Identifier.parse(minor);
 
             Region currExtBeaconRegion = new Region("region-"+eb.getId(), Identifier.parse(eb.getUuid()), majorId, minorId);

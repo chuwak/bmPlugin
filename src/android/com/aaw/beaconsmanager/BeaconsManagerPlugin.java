@@ -223,10 +223,14 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
         boolean altMonitoringRunning = isServiceRunning();
 
 
+        if( AltMonitoring.monitoringCallbackContext==null){
+            AltMonitoring.monitoringCallbackContext = monitoringCallbackContext;
+        }
+
         if(!altMonitoringRunning){
 
             AltMonitoring.runInForeground = true;
-            AltMonitoring.monitoringCallbackContext = monitoringCallbackContext;
+
             ComponentName cn = appContext.startService(altMonitoringService);
         }
 
