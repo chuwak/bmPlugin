@@ -13,8 +13,9 @@ public class ExtBeacon implements Serializable {
     private String uuid;
     private String major;
     private String minor;
-    private int actionType;
-    private String msg;
+    //private int actionType;
+    private MsgForType msgForEnter;
+    private MsgForType msgForExit;
     private String data;
     private Region region;
 
@@ -58,20 +59,37 @@ public class ExtBeacon implements Serializable {
         this.minor = minor;
     }
 
-    public int getActionType() {
-        return actionType;
+//    public int getActionType() {
+//        return actionType;
+//    }
+//
+//    public void setActionType(int actionType) {
+//        this.actionType = actionType;
+//    }
+
+//    public String getMsg() {
+//        return msg;
+//    }
+//
+//    public void setMsg(String msg) {
+//        this.msg = msg;
+//    }
+
+
+    public MsgForType getMsgForEnter() {
+        return msgForEnter;
     }
 
-    public void setActionType(int actionType) {
-        this.actionType = actionType;
+    public void setMsgForEnter(MsgForType msgForEnter) {
+        this.msgForEnter = msgForEnter;
     }
 
-    public String getMsg() {
-        return msg;
+    public MsgForType getMsgForExit() {
+        return msgForExit;
     }
 
-    public void setMsg(String msg) {
-        this.msg = msg;
+    public void setMsgForExit(MsgForType msgForExit) {
+        this.msgForExit = msgForExit;
     }
 
     public String getData() {
@@ -82,5 +100,46 @@ public class ExtBeacon implements Serializable {
         this.data = data;
     }
 
+
+    public MsgForType getMsgForType(ActionType type){
+        if(type == ActionType.enter){
+            return getMsgForEnter();
+        }
+        if(type == ActionType.exit){
+            return getMsgForExit();
+        }
+        return null;
+    }
+
+
+    public static class MsgForType implements Serializable{
+        private String msg;
+        private boolean show;
+        private ActionType type;
+
+        public MsgForType(String msg, boolean show, ActionType type){
+            this.msg = msg;
+            this.show = show;
+            this.type = type;
+        }
+
+        public String getMsg() {
+            return msg;
+        }
+
+        public boolean isShow() {
+            return show;
+        }
+
+        public ActionType getType() {
+            return type;
+        }
+    }
+
+
+    public static enum ActionType implements Serializable{
+        enter,
+        exit
+    }
 
 }

@@ -214,7 +214,7 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
         altBeaconManager.setMonitorNotifier(new MonitorNotifier() {
             @Override
             public void didEnterRegion(Region region) {
-                monitoringStateProcess("enter", region);
+                monitoringStateProcess(ExtBeacon.ActionType.enter, region);
                 //Log.w(TAG, "I just saw an beacon for the first time!");
                 //showNotification("entered allBeaconsRegion.  starting ranging");
 
@@ -222,7 +222,7 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
 
             @Override
             public void didExitRegion(Region region) {
-                monitoringStateProcess("exit", region);
+                monitoringStateProcess(ExtBeacon.ActionType.exit, region);
                 //Log.w(TAG, "I no longer see an beacon");
             }
 
@@ -355,7 +355,7 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
     /**
      * if  monitoring callback is connected, then not show
      */
-    public void monitoringStateProcess(String actionLocationType, Region region){
+    public void monitoringStateProcess(ExtBeacon.ActionType type, Region region){
 
         ExtBeacon eb = findBeaconInArray(extBeaconsList, region);
         if(eb==null){
@@ -364,7 +364,7 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
         }
 
         HashMap<String, Object> returnMap = new HashMap();
-        returnMap.put("actionLocationType", actionLocationType);
+        returnMap.put("actionLocationType", type.name());
         returnMap.put("parametersMap", eb.getData());
         returnMap.put("region", new BeaconsUtils.ExtRegion(region));
 
@@ -383,21 +383,16 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
             return;
         }
 
-
-
-
-//        Map<String, Object> backParams = new HashMap();
-//        backParams.put("data", eb.getData());
-//        backParams.put("actionLocationType", actionLocationType);
-//        backParams.put("region", eb.getRegion());
-//        returnMap.put("parametersMap", eb.getData());
-
-
-
-        switch (eb.getActionType()){
-            case 0: break;
-            case 1: showNotification(eb.getMsg(), returnMap);
+        ExtBeacon.MsgForType msgForType = eb.getMsgForType(type);
+        if(msgForType.isShow()){
+            showNotification(msgForType.getMsg(), returnMap);
         }
+
+
+//        switch (eb.getActionType()){
+//            case 0: break;
+//            case 1: showNotification(eb.getMsg(), returnMap);
+//        }
 
 
     }

@@ -297,9 +297,23 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
                     incBeacon.setUuid(extBcnJso.getString("uuid"));
                     incBeacon.setMajor(extBcnJso.getString("major"));
                     incBeacon.setMinor(extBcnJso.getString("minor"));
-                    incBeacon.setActionType(extBcnJso.getInt("actionType"));
+                    //incBeacon.setActionType(extBcnJso.getInt("actionType"));
+                    //incBeacon.setMsg(extBcnJso.getString("msg"));
                     incBeacon.setData(extBcnJso.getString("data"));
-                    incBeacon.setMsg(extBcnJso.getString("msg"));
+
+                    JSONObject msgForEnterJso = extBcnJso.getJSONObject("msgForEnter");
+                    incBeacon.setMsgForEnter(new ExtBeacon.MsgForType(
+                            msgForEnterJso.getString("msg"),
+                            msgForEnterJso.getBoolean("show"),
+                            ExtBeacon.ActionType.enter
+                    ));
+                    JSONObject msgForExitJso = extBcnJso.getJSONObject("msgForExit");
+                    incBeacon.setMsgForExit(new ExtBeacon.MsgForType(
+                            msgForExitJso.getString("msg"),
+                            msgForExitJso.getBoolean("show"),
+                            ExtBeacon.ActionType.exit
+                    ));
+
 
                     extBeaconsList.add(incBeacon);
                 }
