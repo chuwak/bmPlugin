@@ -59,7 +59,7 @@
     BeaconsManager.prototype.setMonitoringFunction = function(func){
         monitoringAsyncFunc = func;
         cordova.exec(
-            function(res){},
+            func,//function(res){},
             function(e){alert('error sent onDeviceReady: '+e);},
             'BeaconsManagerPlugin', 'monitoringFunctionSet', []);
     }
