@@ -196,13 +196,14 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
 
         else
         if (action.equals("onDeviceReady")) {
-            monitoringCallbackContext = callbackContext;
+
             onDeviceReady();
             return true;
         }
 
         else
-        if(action.equals("monitoringFunctionSet"))  {
+        if(action.equals("setMonitoringFunction"))  {
+            monitoringCallbackContext = callbackContext;
             monitoringFunctionSet = true;
             sendBundles();
             return true;

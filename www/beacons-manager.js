@@ -50,18 +50,18 @@
         cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "applyParameters", [params]);
     };
 
-    var monitoringAsyncFunc;
-
-    monitoringAsyncFunc = function (result){
-        console.log('result: '+JSON.stringify(result) );
-    }
+    //var monitoringAsyncFunc;
+    //
+    //monitoringAsyncFunc = function (result){
+    //    console.log('result: '+JSON.stringify(result) );
+    //}
 
     BeaconsManager.prototype.setMonitoringFunction = function(func){
-        monitoringAsyncFunc = func;
+        //monitoringAsyncFunc = func;
         cordova.exec(
             func,//function(res){},
             function(e){alert('error sent onDeviceReady: '+e);},
-            'BeaconsManagerPlugin', 'monitoringFunctionSet', []);
+            'BeaconsManagerPlugin', 'setMonitoringFunction', []);
     }
 
 
@@ -70,8 +70,8 @@
         // Device is ready now, the listeners are registered
         // and all queued events can be executed.
         cordova.exec(
-            monitoringAsyncFunc,
-            function(e){alert('error sent onDeviceReady: '+e);},
+            function(res){console.log('deviceReady for plugin called')},
+            function(e){console.error('error sent onDeviceReady: '+e);},
             'BeaconsManagerPlugin', 'onDeviceReady', []);
     });
 
