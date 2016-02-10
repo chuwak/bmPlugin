@@ -1,4 +1,4 @@
-
+cordova.define("com.aaw.beaconsmanager.BeaconsManagerPlugin", function(require, exports, module) {
 
     var exec    = require('cordova/exec'),
     channel = require('cordova/channel');
@@ -54,7 +54,7 @@
     var monitoringAsyncFunc;
 
     monitoringAsyncFunc = function (result){
-        console.log('result: '+result );
+        console.log('result: '+JSON.stringify(result) );
     }
 
     BeaconsManager.prototype.setMonitoringFunction = function(func){
@@ -80,4 +80,4 @@
     module.exports = BeaconsManager;
 
 
-
+});
