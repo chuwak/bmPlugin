@@ -1,13 +1,17 @@
+//
+//  AppDelegate+CDVLocationManager.h
+//  iBeaconTemplate
+//
 
 
 #import "AppDelegate.h"
-#import <objc/runtime.h>
+#import "BeaconsManagerPlugin.h"
+
 
 @interface AppDelegate (CLLocationManager)
 
-@property(nonatomic, strong) id bManagerAO;
+@property(nonatomic, strong) BeaconsManagerPlugin* beaconsManagerPluginInstanceAO;
 
-- (BOOL) bm_application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions;
-
+//- (BOOL) xxx_application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions;  // todo uncomment
 
 @end

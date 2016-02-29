@@ -50,6 +50,15 @@
         cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "applyParameters", [params]);
     };
 
+    //====================   BLUETOOTH   ===================
+   BeaconsManager.prototype.isBluetoothEnabled = function (successCallback, errorCallback, params) {
+       cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "isBluetoothEnabled", [params]);
+   };
+   
+   BeaconsManager.prototype.enableBluetooth = function (successCallback, errorCallback, params) {
+       cordova.exec(successCallback, errorCallback, "BeaconsManagerPlugin", "enableBluetooth", [params]);
+   };
+
     //var monitoringAsyncFunc;
     //
     //monitoringAsyncFunc = function (result){
