@@ -25,6 +25,7 @@ typedef CDVPluginResult* (^CDVPluginCommandHandler)(CDVInvokedUrlCommand*);
 //@property CLProximity lastProximity;
 
 @property(nonatomic) Boolean deviceReady;
+@property(nonatomic) Boolean isPaused;
 
 
 @property (strong, nonatomic) NSString *monitoringCallbackId;
@@ -42,6 +43,7 @@ typedef CDVPluginResult* (^CDVPluginCommandHandler)(CDVInvokedUrlCommand*);
 
 -(void)startRanging:(CDVInvokedUrlCommand*)command;
 -(void)stopRanging:(CDVInvokedUrlCommand*)command;
+-(void)setRangingFunction:(CDVInvokedUrlCommand*)command;
 
 -(void)onDeviceReady:(CDVInvokedUrlCommand*)command;
 -(void)setMonitoringFunction:(CDVInvokedUrlCommand*)command;

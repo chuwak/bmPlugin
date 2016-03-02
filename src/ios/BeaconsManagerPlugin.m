@@ -14,6 +14,8 @@
 @synthesize queueArr;
 
 @synthesize deviceReady;
+@synthesize isPaused;
+
 @synthesize locationManager;
 @synthesize centralManager;
 @synthesize peripheralManager;
@@ -32,18 +34,9 @@ double framePreviousTime = 0;
 - (void)pluginInitialize
 {
     NSLog(@"=== BeaconsManager pluginInitialize");
-    CLLocationManager *selfLocationManager = [[CLLocationManager alloc] init];
-    self.locationManager = selfLocationManager;
-    if([selfLocationManager respondsToSelector:@selector(requestAlwaysAuthorization)]) {
-        [selfLocationManager requestAlwaysAuthorization];
-    }
+    self.isPaused = false;
     
-    if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]) {
-        [[UIApplication sharedApplication] registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeSound|UIUserNotificationTypeBadge categories:nil]];
-    }
-    
-    selfLocationManager.pausesLocationUpdatesAutomatically = NO;
-    selfLocationManager.delegate = self;
+    [self initLocationManager];
     
     BeaconsManagerPlugin *bManager = [[BeaconsManagerPlugin alloc]init];
     bManager.locationManager = self.locationManager;
@@ -70,6 +63,22 @@ double framePreviousTime = 0;
     [self.centralManager scanForPeripheralsWithServices:nil options:options];
 }
 
+
+- (void) initLocationManager{
+    CLLocationManager *selfLocationManager = [[CLLocationManager alloc] init];
+    self.locationManager = selfLocationManager;
+    if([selfLocationManager respondsToSelector:@selector(requestAlwaysAuthorization)]) {
+        [selfLocationManager requestAlwaysAuthorization];
+    }
+    
+    if ([UIApplication instancesRespondToSelector:@selector(registerUserNotificationSettings:)]) {
+        [[UIApplication sharedApplication] registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:UIUserNotificationTypeAlert|UIUserNotificationTypeSound|UIUserNotificationTypeBadge categories:nil]];
+    }
+    
+    selfLocationManager.pausesLocationUpdatesAutomatically = NO;
+    selfLocationManager.delegate = self;
+
+}
 
 
 - (void) initEventQueue
@@ -146,10 +155,10 @@ double framePreviousTime = 0;
     
     
     self.monitoringCallbackId = command.callbackId;
-    [BeaconsManagerPlugin getBeaconsManagerPluginFromAppDelegate].monitoringCallbackId = command.callbackId;
+    //[BeaconsManagerPlugin getBeaconsManagerPluginFromAppDelegate].monitoringCallbackId = command.callbackId;
     
     
-    [BeaconsManagerPlugin getBeaconsManagerPluginFromAppDelegate].commandDelegate = self.commandDelegate;
+    //[BeaconsManagerPlugin getBeaconsManagerPluginFromAppDelegate].commandDelegate = self.commandDelegate;
     
     
     CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
@@ -163,13 +172,15 @@ double framePreviousTime = 0;
 
 
 
+
+
 //==========================================================================
 //=======================   Start-stop service  ============================
 //==========================================================================
 
 
 -(void)startService:(CDVInvokedUrlCommand*)command{
-    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Service was started"];
+    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[@"Service was started. " stringByAppendingString:[self warningOfBluetooth] ] ];
     @try {
         [self startServiceInner];
     }
@@ -184,7 +195,9 @@ double framePreviousTime = 0;
 -(void)startServiceInner {
     
     //AppDelegate *appDelegate = (AppDelegate*)[[UIApplication sharedApplication]delegate];
-    //CLLocationManager *locManInstance = appDelegate.beaconsManagerPluginInstanceAO.locationManager;
+    if(self.locationManager == nil){
+        [self initLocationManager];
+    }
     
     switch ([CLLocationManager authorizationStatus]) {
         case kCLAuthorizationStatusAuthorizedAlways:
@@ -221,7 +234,9 @@ double framePreviousTime = 0;
 -(void) stopService:(CDVInvokedUrlCommand *)command
 {
     [self.locationManager stopUpdatingLocation];
-    [[BeaconsManagerPlugin getBeaconsManagerPluginFromAppDelegate].locationManager stopUpdatingLocation];
+    //[[BeaconsManagerPlugin getBeaconsManagerPluginFromAppDelegate].locationManager stopUpdatingLocation];
+    self.locationManager = nil;
+    [BeaconsManagerPlugin getBeaconsManagerPluginFromAppDelegate].locationManager = nil;
     CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Service was stopped"];
     [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
 }
@@ -234,7 +249,7 @@ double framePreviousTime = 0;
 
 
 -(void)startMonitoring:(CDVInvokedUrlCommand *)command{
-    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Monitoring started"];
+    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[@"Monitoring started" stringByAppendingString:[self warningOfBluetooth] ] ];
     @try {
         NSArray* inputBeaconsArr = [command.arguments objectAtIndex:0];
         [self startMonitoringInner:inputBeaconsArr];
@@ -248,6 +263,9 @@ double framePreviousTime = 0;
 
 
 -(void)startMonitoringInner:(NSArray*)beaconsArr{
+    if(self.locationManager == nil){
+        [self initLocationManager];
+    }
     
     NSMutableArray *incomingArr = [NSMutableArray array];
     
@@ -428,6 +446,7 @@ double framePreviousTime = 0;
 
     if(searchedExtBeacon == nil){
         NSLog(@"=== Saved beacon not found ===");
+        return;
     }
     
     NSString *dataStr = searchedExtBeacon.data;
@@ -447,7 +466,7 @@ double framePreviousTime = 0;
     NSNumber *tempTime = [[NSNumber alloc] initWithDouble:currentTime];
     [dict setValue:tempTime forKey:@"fireTimeMillis"];
     
-    if(msgForType.show == true){
+    if(msgForType.show == true && isPaused){
         [BeaconsManagerPlugin sendLocalNotificationWithMessage: msgForType.msg : dataStr : dict ];
     }
     
@@ -463,20 +482,36 @@ double framePreviousTime = 0;
 
 -(void)startRanging:(CDVInvokedUrlCommand *)command
 {
-    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Ranging was started"];
+    if(self.locationManager == nil){
+        [self initLocationManager];
+    }
+    
+    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:[@"Ranging was started" stringByAppendingString:[self warningOfBluetooth] ]];
     @try {
         NSArray* rangingBeaconsArr = [command.arguments objectAtIndex:0];
         [self startRangingInner:rangingBeaconsArr];
         
-        self.rangingCallbackId = command.callbackId;
+        //self.rangingCallbackId = command.callbackId;
     }
     @catch (NSException *exception) {
         NSString *errMsg = [NSString stringWithFormat:@"Error:: %@  by Reason :: %@", exception.name, exception.reason ];
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:errMsg];
     }
-    [result setKeepCallbackAsBool:YES];
+    
     [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
 }
+
+
+-(void)setRangingFunction:(CDVInvokedUrlCommand *)command
+{
+    self.rangingCallbackId = command.callbackId;
+    
+    CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+    [result setKeepCallbackAsBool:YES];
+    [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+    
+}
+
 
 
 
@@ -491,10 +526,10 @@ double framePreviousTime = 0;
      
 -(void)locationManager:(CLLocationManager *)manager didRangeBeacons:(NSArray *)beacons inRegion:(CLBeaconRegion *)region
 {
-    if([beacons count]>0){
+    //if([beacons count]>0){
         //NSLog(@"%d rID: %@",[beacons count], region.proximityUUID.UUIDString);
         [self multipeRegions:beacons ];
-    }
+    //}
 //    if([beacons count]>2){
 //        NSLog(@">2");
 //    }
@@ -586,10 +621,31 @@ double framePreviousTime = 0;
 
 -(void)applyParameters:(CDVInvokedUrlCommand *)command
 {
-    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"Apply parameters not work on ios"];
+    NSString* resultStr = @"OK";
+    NSDictionary* params = [command.arguments objectAtIndex:0];
+    
+    for (NSString* key in params) {
+        if([key isEqual:@"paused"]){
+            NSNumber* value = [params objectForKey:key];
+            bool b= [value boolValue];
+            if(b == true){
+                self.isPaused = true;
+            }else{
+                self.isPaused = false;
+            }
+            
+        }
+        else{
+            resultStr = [NSString stringWithFormat: @"key %@ not apply to ios", key];
+        }
+        
+    }
+    
+    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString: resultStr];
    
     [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
 
+    
 }
 
 
@@ -655,16 +711,20 @@ double framePreviousTime = 0;
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central
 {
     NSMutableDictionary *dict = [NSMutableDictionary new];
+    NSMutableDictionary *data = [NSMutableDictionary new];
     [dict setObject: @"didChangeBluetoothStatus"  forKey:@"eventType"];
+    [dict setObject:data forKey:@"data"];
 
     if ([central state] == CBCentralManagerStatePoweredOff) {
         //NSLog(@"Bluetooth off");
-        [dict setObject: @"STATE_OFF"  forKey:@"status"];
+        [data setObject: @"STATE_OFF"  forKey:@"status"];
+        [data setObject: @"STATE_ON"  forKey:@"oldStatus"];
         
     }
     else if ([central state] == CBCentralManagerStatePoweredOn) {
         //NSLog(@"Bluetooth on");
-        [dict setObject: @"STATE_ON"  forKey:@"status"];
+        [data setObject: @"STATE_ON"  forKey:@"status"];
+        [data setObject: @"STATE_OFF"  forKey:@"oldStatus"];
 
     }
     [self addToQueue:dict];
@@ -672,14 +732,25 @@ double framePreviousTime = 0;
 
 
 
--(void) isBluetoothEnabled: (CDVInvokedUrlCommand*)command {
-    
-    BOOL isEnabled = peripheralManager.state == CBPeripheralManagerStatePoweredOn;
-        
+-(void) isBluetoothEnabled: (CDVInvokedUrlCommand*)command
+{
+    BOOL isEnabled = [self _isBluetoothEnabled];
     CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsBool:isEnabled];
-    
     [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+}
 
+-(BOOL) _isBluetoothEnabled
+{
+    BOOL isEnabled = peripheralManager.state == CBPeripheralManagerStatePoweredOn;
+    return isEnabled;
+}
+
+-(NSString*)warningOfBluetooth
+{
+    if([self _isBluetoothEnabled]){
+        return @"";
+    }
+    return @" WARNING: Bluetooth is disabled.";
 }
 
 

@@ -1,6 +1,7 @@
 package com.aaw.beaconsmanager;
 
 import android.Manifest;
+import android.bluetooth.BluetoothAdapter;
 import android.content.*;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -61,7 +62,7 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
 
         altMonitoringService = new Intent(this.cordova.getActivity()/*.getApplicationContext()*/, AltMonitoring.class);
 
-
+        AltMonitoring.isPaused = false;
 
 
         //==================
@@ -95,13 +96,13 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
 
         //=== service
         if(action.equals("startService")){
-            this.startService(new Callback());
+            this.startService(new Callback(), callbackContext);
             return true;
         }
 
         else
         if(action.equals("stopService")){
-            this.stopService();
+            this.stopService(callbackContext);
             return true;
         }
 
@@ -188,15 +189,8 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
         }
 
 
-//        else
-//        if(action.equals("readLaunchData")){
-//            this.readLaunchData();
-//            return true;
-//        }
-
         else
         if (action.equals("onDeviceReady")) {
-
             onDeviceReady();
             return true;
         }
@@ -209,12 +203,30 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
             return true;
         }
 
+        else
+        if(action.equals("setRangingFunction"))  {
+            rangingCallbackContext = callbackContext;
+            return true;
+        }
+
+        else
+        if(action.equals("isBluetoothEnabled"))  {
+            this.isBluetoothEnabled(callbackContext);
+            return true;
+        }
+
+        else
+        if(action.equals("enableBluetooth"))  {
+            this.enableBluetooth(callbackContext);
+            return true;
+        }
+
 
         return false;
     }
 
 
-    private void startService(final Callback callback){
+    private void startService(final Callback callback, CallbackContext callbackContext){
 
         Context appContext = getMainAppContext();  // getContext()
 
@@ -254,12 +266,12 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
             boolean connected = appContext.bindService(altMonitoringService, serviceConnection, Context.BIND_AUTO_CREATE);
 
             if (connected) {
-                asyncSuccess(monitoringCallbackContext, "Connected to service success ");
+                asyncSuccess(/*monitoringCallbackContext*/callbackContext, "Connected to service success. " + warningOfBluetooth());
             } else {
-                asyncSuccess(monitoringCallbackContext, "Service already running. Not connected to service ");
+                asyncSuccess(/*monitoringCallbackContext*/callbackContext, "Service already running. Not connected to service. " + warningOfBluetooth());
             }
         }else{
-            asyncSuccess(monitoringCallbackContext, "Service already started and bound");
+            asyncSuccess(/*monitoringCallbackContext*/callbackContext, "Service already started and bound. " + warningOfBluetooth());
             callback.call();
         }
 
@@ -267,7 +279,7 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
     }
 
 
-    private void stopService(){
+    private void stopService(CallbackContext callbackContext){
         boolean altMonitoringRunning = isServiceRunning();
         if(altMonitoringRunning){
             if(serviceConnection!=null) {
@@ -275,9 +287,9 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
                 serviceConnection = null;
             }
             boolean stopped = getMainAppContext().stopService(altMonitoringService);
-            asyncSuccess(monitoringCallbackContext, "Service has been stopped success: "+stopped);
+            asyncSuccess(/*monitoringCallbackContext*/callbackContext, "Service has been stopped success: "+stopped);
         }else{
-            asyncSuccess(monitoringCallbackContext, "Service is not running");
+            asyncSuccess(/*monitoringCallbackContext*/callbackContext, "Service is not running");
         }
     }
 
@@ -336,7 +348,7 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
                 try {
                     altMonitoringInstance.startMonitoring();
                     if(callbackContext!=null) {
-                        asyncSuccess(callbackContext, "Monitoring started");
+                        asyncSuccess(callbackContext, "Monitoring started. " + warningOfBluetooth());
                     }
                     BeaconsUtils.writeStringVariableToAppContext("monitoringRunning", "true");
                 }catch (Exception e){
@@ -388,7 +400,7 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
 
                         }
 
-                        if(callbackContext!=null){
+                        if(rangingCallbackContext!=null){
                             PluginResult result;
                             try{
                                 JSONObject data = new JSONObject();
@@ -408,59 +420,15 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
                                 result = new PluginResult(PluginResult.Status.JSON_EXCEPTION, je.getMessage());
 
                             }
-                            callbackContext.sendPluginResult(result);
+                            rangingCallbackContext.sendPluginResult(result);
 
                         }
                     }
                 };
 
 
-
-//                altMonitoringInstance.getAltBeaconManagerInstance().setRangeNotifier(new RangeNotifier() {
-//                    @Override
-//                    public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
-//                        for (Beacon beacon: beacons) {
-//
-//                            Log.w(TAG, "===  didRangeBeaconsInRegion ===size:"+beacons.size());
-//                            //showNotification( "===  didRangeBeaconsInRegion ===size: "+beacons.size(), new HashMap<String, String>());
-//
-//                            //if (beacon.getServiceUuid() == 0xfeaa && beacon.getBeaconTypeCode() == 0x00) {
-//                            // This is a Eddystone-UID frame
-//                            Identifier namespaceId = beacon.getId1();
-//                            Identifier instanceId = beacon.getId2();
-//                            Log.d(TAG, "I see a beacon transmitting namespace id: "+namespaceId+
-//                                    " and instance id: "+instanceId+
-//                                    " approximately "+beacon.getDistance()+" meters away.");
-//
-//                        }
-//
-//                        if(callbackContext!=null){
-//                            PluginResult result;
-//                            try{
-//                                JSONObject data = new JSONObject();
-//                                JSONArray beaconData = new JSONArray();
-//                                for (Beacon beacon : beacons) {
-//                                    beaconData.put(BeaconsUtils.mapOfBeacon(beacon));
-//                                }
-//                                data.put("eventType", "didRangeBeaconsInRegion");
-//                                //data.put("region", mapOfRegion(region));
-//                                data.put("beacons", beaconData);
-//
-//
-//                                //send and keep reference to callback
-//                                result = new PluginResult(PluginResult.Status.OK, data);
-//                                result.setKeepCallback(true);
-//                            }catch (Exception je){
-//                                result = new PluginResult(PluginResult.Status.JSON_EXCEPTION, je.getMessage());
-//
-//                            }
-//                            callbackContext.sendPluginResult(result);
-//
-//                        }
-//                    }
-//                });
                 altMonitoringInstance.startRanging(callbackContext, rangeNotifier);
-                asyncSuccess(monitoringCallbackContext, "Ranging started");
+                asyncSuccess(/*monitoringCallbackContext*/callbackContext, "Ranging started. " + warningOfBluetooth());
             }
         };
 
@@ -472,7 +440,7 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
     private void stopRanging(CallbackContext callbackContext){
         try{
             altMonitoringInstance.stopRanging();
-            asyncSuccess(monitoringCallbackContext, "Ranging stopped");
+            asyncSuccess(/*monitoringCallbackContext*/callbackContext, "Ranging stopped");
         }catch(Exception e){
             callbackContext.error(e.getMessage());
         }
@@ -480,12 +448,6 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
     }
 
 
-
-//    public void readLaunchData(){
-//       //IntegetContext().getPackageManager().getLaunchIntentForPackage(MainApplication.getContext().getPackageName());
-//        this.cordova.getActivity().getIntent().getExtras();
-//
-//    }
 
 
 
@@ -530,19 +492,34 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
                 } else {
                     callbackContext.error("Unknown action for val: " + val + " on key: " + key);
                 }
-            } else if (key.equals("foregroundScanPeriod")) {
+            }
+            else if(key.equals("paused")){
+                if (val.equals("true")) {
+                    AltMonitoring.isPaused = true;
+                    AltMonitoring.altBeaconManager.setBackgroundMode(true);
+
+                } else if (val.equals("false")) {
+                    AltMonitoring.isPaused = false;
+                    AltMonitoring.altBeaconManager.setBackgroundMode(false);
+                }
+            }
+            else if (key.equals("foregroundScanPeriod")) {
                 long period = Long.parseLong(val);
                 AltMonitoring.altBeaconManager.setForegroundScanPeriod(period);
-            } else if (key.equals("foregroundBetweenScanPeriod")) {
+            }
+            else if (key.equals("foregroundBetweenScanPeriod")) {
                 long period = Long.parseLong(val);
                 AltMonitoring.altBeaconManager.setForegroundBetweenScanPeriod(period);
-            } else if (key.equals("backgroundScanPeriod")) {
+            }
+            else if (key.equals("backgroundScanPeriod")) {
                 long period = Long.parseLong(val);
                 AltMonitoring.altBeaconManager.setBackgroundScanPeriod(period);
-            } else if (key.equals("backgroundBetweenScanPeriod")) {
+            }
+            else if (key.equals("backgroundBetweenScanPeriod")) {
                 long period = Long.parseLong(val);
                 AltMonitoring.altBeaconManager.setBackgroundBetweenScanPeriod(period);
-            } else {
+            }
+            else {
                 callbackContext.error("Unknown action for key:" + key);
             }
 
@@ -589,6 +566,35 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
     }
 
 
+    private void isBluetoothEnabled(CallbackContext callbackContext){
+        boolean isEnabled = _isBluetoothEnabled();
+
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, isEnabled);
+        callbackContext.sendPluginResult(pluginResult);
+    }
+
+    private boolean _isBluetoothEnabled(){
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        if (mBluetoothAdapter.isEnabled()) {
+            return true;
+        }
+        return false;
+    }
+
+
+    private void enableBluetooth(CallbackContext callbackContext){
+        BluetoothAdapter mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        boolean wasEnabled = true;
+        if (!mBluetoothAdapter.isEnabled()) {
+            wasEnabled = mBluetoothAdapter.enable();
+        }
+
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, wasEnabled);
+        callbackContext.sendPluginResult(pluginResult);
+    }
+
+
+
 
 
 
@@ -628,57 +634,7 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
         deviceReady = true;
         sendBundles();
 
-//        for (String js : eventQueue) {
-//            sendJavascript(js);
-//        }
-//
-//        eventQueue.clear();
     }
-
-
-//    private  synchronized void sendJavascript(final String js) {
-//        Log.w(TAG, "====== sendJavascript Called ======="+js);
-//
-//        if (!deviceReady) {
-//            Log.w(TAG, "====== device not ready  ====== add to queue next:"+js);
-//            eventQueue.add(js);
-//            return;
-//        }
-//        Runnable jsLoader = new Runnable() {
-//            public void run() {
-//                webView.loadUrl("javascript:" + js);
-//            }
-//        };
-//        try {
-//            Method post = webView.getClass().getMethod("post",Runnable.class);
-//            post.invoke(webView,jsLoader);
-//        } catch(Exception e) {
-//
-//            ((Activity)(webView.getContext())).runOnUiThread(jsLoader);
-//        }
-//    }
-
-
-
-
-
-//    public void sendNotifyToJavascript(Bundle b){
-//        Log.w(TAG, "=============sendNotifyToJavascript=======Bundle b.size: "+b.size());
-//        Object beaconData = "";
-//        Object actionLocationType ="";
-//        for(String key: b.keySet()){
-//            if(key.equals("data")){
-//                beaconData = b.get(key);
-//            }
-//            if(key.equals("actionLocationType")){
-//                actionLocationType = b.get(key);
-//            }
-//
-//        }
-//        String jsStr = "if(handleIncomingNotification){handleIncomingNotification('"+actionLocationType+"', "+beaconData+")}";
-//        sendJavascript(jsStr);
-//    }
-
 
 
 
@@ -716,10 +672,18 @@ public class BeaconsManagerPlugin extends CordovaPlugin {
 
     private void startServiceIfNotRunning(Callback callback){
         //if(isServiceRunning() == false){
-            startService(callback);
+            startService(callback, null);
 //        }else{
 //            callback.call();
 //        }
+    }
+
+
+    private String warningOfBluetooth(){
+        if(_isBluetoothEnabled()){
+            return "";
+        }
+        return " WARNING: Bluetooth is disabled.";
     }
 
 }

@@ -46,6 +46,8 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
 
     public static boolean runInForeground = false;
 
+    public static boolean isPaused = true;
+
     private BroadcastReceiver broadcastReceiver;
 
 
@@ -81,11 +83,13 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
             if(!runInForeground){
                 //altBeaconManager.setBackgroundMode(true);
             }
-            altBeaconManager.setBackgroundScanPeriod(400L);
-            altBeaconManager.setBackgroundBetweenScanPeriod(2000L);
+            altBeaconManager.setBackgroundScanPeriod(1000L);
+            altBeaconManager.setBackgroundBetweenScanPeriod(5000L);
 
             altBeaconManager.setForegroundBetweenScanPeriod(0L);
             altBeaconManager.setForegroundScanPeriod(333L);
+
+            altBeaconManager.setDebug(false);
 
 
         }catch (Exception e){
@@ -380,19 +384,14 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
             result.setKeepCallback(true);
             monitoringCallbackContext.sendPluginResult(result);
 
-            return;
+            //return;
         }
 
         ExtBeacon.MsgForType msgForType = eb.getMsgForType(type);
-        if(msgForType.isShow()){
+        if(msgForType.isShow() && isPaused){
             showNotification(msgForType.getMsg(), returnMap);
         }
 
-
-//        switch (eb.getActionType()){
-//            case 0: break;
-//            case 1: showNotification(eb.getMsg(), returnMap);
-//        }
 
 
     }
@@ -586,7 +585,7 @@ public class AltMonitoring  extends Service implements BeaconConsumer/*, RangeNo
                 resJso.put("eventType", "didChangeBluetoothStatus");
                 JSONObject data = new JSONObject();
                 data.put("oldStatus", oldStatus);
-                data.put("newStatus", newStatus);
+                data.put("status", newStatus);
                 resJso.put("data", data);
             }catch (JSONException je){
                 Log.e(TAG, je.getMessage());
