@@ -3,7 +3,7 @@
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android"
         id="com.aaw.bmplugin"
-        version="0.7.5">
+        version="0.3.1">
 
     <name>BeaconsManagerPlugin</name>
 
@@ -50,8 +50,8 @@
 
         <header-file src="src/ios/ExtBeacon.h"/>
 
-        <header-file src="src/ios/BeaconsManager.h"/>
-        <source-file src="src/ios/BeaconsManager.m"/>
+        <header-file src="src/ios/BeaconsManagerPlugin.h"/>
+        <source-file src="src/ios/BeaconsManagerPlugin.m"/>
 
         <header-file src="src/ios/AppDelegate+CLLocationManager.h"/>
         <source-file src="src/ios/AppDelegate+CLLocationManager.m"/>
